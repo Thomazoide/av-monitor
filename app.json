@@ -9,14 +9,30 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para registrar inspecciones en áreas verdes.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos tu ubicación en segundo plano para monitorear recorridos durante la supervisión.",
+        "NSBluetoothAlwaysUsageDescription": "La app usa Bluetooth para interactuar con dispositivos cercanos durante la supervisión.",
+        "NSBluetoothPeripheralUsageDescription": "La app puede usar Bluetooth para detectar o comunicarse con equipos cercanos."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_ADVERTISE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +53,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dca6426f-0ff6-4a00-b9ad-423c96ed7e49"
+      }
+    },
+    "owner": "thomazo"
   }
 }
