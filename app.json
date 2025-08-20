@@ -31,8 +31,17 @@
         "BLUETOOTH_ADMIN",
         "BLUETOOTH_CONNECT",
         "BLUETOOTH_SCAN",
+        "BLUETOOTH_ADVERTISE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
         "BLUETOOTH_ADVERTISE"
-      ]
+      ],
+      "package": "com.thomazo.avmonitor"
     },
     "web": {
       "bundler": "metro",

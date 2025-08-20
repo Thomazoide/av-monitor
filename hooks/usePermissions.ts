@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { PermissionsAndroid, Platform } from 'react-native';
 
@@ -29,25 +30,71 @@ export async function requestLocationPermissions(): Promise<LocationPermissionSt
 export async function requestBluetoothPermissions(): Promise<boolean> {
   if (Platform.OS === 'android') {
     try {
+      // In Expo Go, these permission prompts may not be available in the host manifest.
+      if (Constants.appOwnership === 'expo') {
+        return true;
+      }
       const api = Number(Platform.Version);
+
+      // Safety net to avoid any potential hang on some OEMs
+      const withTimeout = async <T,>(p: Promise<T>, ms = 8000, fallback: T): Promise<T> => {
+        return new Promise<T>((resolve) => {
+          let done = false;
+          const t = setTimeout(() => {
+            if (!done) resolve(fallback);
+          }, ms);
+          p.then((v) => {
+            done = true;
+            clearTimeout(t);
+            resolve(v);
+          }).catch(() => {
+            done = true;
+            clearTimeout(t);
+            resolve(fallback);
+          });
+        });
+      };
       if (api >= 31) {
-        const res = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-          // Advertise is only needed if you plan to advertise; request defensively.
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE,
-        ]);
-        return (
-          res[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === PermissionsAndroid.RESULTS.GRANTED &&
-          res[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === PermissionsAndroid.RESULTS.GRANTED &&
-          res[PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE] === PermissionsAndroid.RESULTS.GRANTED
+        // Request only what we need for scanning/connecting. Do not require ADVERTISE.
+        const res = await withTimeout(
+          PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+          ]),
+          8000,
+          {
+            [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN]: PermissionsAndroid.RESULTS.DENIED,
+            [PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]: PermissionsAndroid.RESULTS.DENIED,
+          } as Record<string, 'granted' | 'denied' | 'never_ask_again'>
         );
+        const scanGranted =
+          res[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] ===
+          PermissionsAndroid.RESULTS.GRANTED;
+        const connectGranted =
+          res[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] ===
+          PermissionsAndroid.RESULTS.GRANTED;
+        return scanGranted && connectGranted;
       } else {
-        // On Android < 12, BLE scan often requires fine location permission.
-        const res = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        // On Android < 12, BLE scan often requires (fine/coarse) location permissions.
+        const res = await withTimeout(
+          PermissionsAndroid.requestMultiple([
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+          ]),
+          8000,
+          {
+            [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION]: PermissionsAndroid.RESULTS.DENIED,
+            [PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION]: PermissionsAndroid.RESULTS.DENIED,
+          } as Record<string, 'granted' | 'denied' | 'never_ask_again'>
         );
-        return res === PermissionsAndroid.RESULTS.GRANTED;
+        const fineGranted =
+          res[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] ===
+          PermissionsAndroid.RESULTS.GRANTED;
+        const coarseGranted =
+          res[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] ===
+          PermissionsAndroid.RESULTS.GRANTED;
+        // Either is typically sufficient for scanning on older Android.
+        return fineGranted || coarseGranted;
       }
     } catch (e) {
       return false;

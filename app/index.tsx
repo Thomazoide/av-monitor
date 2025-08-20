@@ -25,7 +25,7 @@ export default function LandingScreen() {
     if (ok) {
       setPatente(localPatente.trim().toUpperCase());
       setRut(localRut.trim());
-  router.replace('/(tabs)');
+      router.replace('/monitor');
     } else {
       // Minimal UX: keep the user on the screen; you can add a Toast/Alert later.
     }
