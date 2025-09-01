@@ -12,15 +12,48 @@ export async function requestLocationPermissions(): Promise<LocationPermissionSt
   let bgGranted = false;
 
   try {
+    // Web: skip; permissions model is different and not relevant for native background.
+    if (Platform.OS === 'web') {
+      return { foreground: false, background: false };
+    }
+
     const fg = await Location.requestForegroundPermissionsAsync();
     fgGranted = fg.status === 'granted';
 
     if (fgGranted) {
-      // Background permission may not be supported or may require user to go to settings.
-      const bg = await Location.requestBackgroundPermissionsAsync();
-      bgGranted = bg.status === 'granted';
+      // In Expo Go, background permission cannot be properly requested.
+      if (Constants.appOwnership === 'expo') {
+        bgGranted = false;
+      } else {
+        // Background permission may not be supported or may require user to go to settings.
+        // Add a timeout so we don't hang if the OS doesn't show a prompt.
+        const withTimeout = async <T,>(p: Promise<T>, ms = 6000): Promise<T | null> => {
+          return new Promise<T | null>((resolve) => {
+            let done = false;
+            const t = setTimeout(() => {
+              if (!done) resolve(null);
+            }, ms);
+            p.then((v) => {
+              done = true;
+              clearTimeout(t);
+              resolve(v);
+            }).catch(() => {
+              done = true;
+              clearTimeout(t);
+              resolve(null);
+            });
+          });
+        };
+
+        const bg = await withTimeout(Location.requestBackgroundPermissionsAsync(), 7000);
+        if (bg && (bg as Location.PermissionResponse).status) {
+          bgGranted = (bg as Location.PermissionResponse).status === 'granted';
+        } else {
+          bgGranted = false;
+        }
+      }
     }
-  } catch (e) {
+  } catch {
     // noop; return false statuses
   }
 
@@ -96,7 +129,7 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
         // Either is typically sufficient for scanning on older Android.
         return fineGranted || coarseGranted;
       }
-    } catch (e) {
+  } catch {
       return false;
     }
   }
@@ -107,9 +140,8 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
 }
 
 export async function requestAllPermissions() {
-  const [loc, ble] = await Promise.all([
-    requestLocationPermissions(),
-    requestBluetoothPermissions(),
-  ]);
-  return { location: loc, bluetooth: ble };
+  // Request sequentially to avoid overlapping OS dialogs.
+  const location = await requestLocationPermissions();
+  const bluetooth = await requestBluetoothPermissions();
+  return { location, bluetooth };
 }

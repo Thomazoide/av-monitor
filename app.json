@@ -14,7 +14,8 @@
         "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para registrar inspecciones en áreas verdes.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos tu ubicación en segundo plano para monitorear recorridos durante la supervisión.",
         "NSBluetoothAlwaysUsageDescription": "La app usa Bluetooth para interactuar con dispositivos cercanos durante la supervisión.",
-        "NSBluetoothPeripheralUsageDescription": "La app puede usar Bluetooth para detectar o comunicarse con equipos cercanos."
+        "NSBluetoothPeripheralUsageDescription": "La app puede usar Bluetooth para detectar o comunicarse con equipos cercanos.",
+        "UIBackgroundModes": ["location"]
       }
     },
     "android": {

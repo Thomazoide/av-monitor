@@ -4,7 +4,7 @@ import { useUserInputs } from '@/context/UserInputsContext';
 import { requestAllPermissions } from '@/hooks/usePermissions';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 export default function LandingScreen() {
   const router = useRouter();
@@ -20,14 +20,20 @@ export default function LandingScreen() {
     const { location, bluetooth } = await requestAllPermissions();
     setRequestingPerms(false);
 
-    // Proceed even if background isn't granted but foreground is; you can enforce stricter later.
-    const ok = location.foreground && bluetooth;
+  const ok = location.foreground && location.background && bluetooth;
     if (ok) {
       setPatente(localPatente.trim().toUpperCase());
       setRut(localRut.trim());
       router.replace('/monitor');
     } else {
-      // Minimal UX: keep the user on the screen; you can add a Toast/Alert later.
+      Alert.alert(
+        'Permisos necesarios',
+        'Los permisos de ubicación (incluida en segundo plano) y de Bluetooth son necesarios para el funcionamiento de la aplicación.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Ir a Configuración', onPress: () => { Linking.openSettings(); } },
+        ]
+      );
     }
   };
 
