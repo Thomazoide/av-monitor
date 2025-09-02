@@ -8,8 +8,6 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useUserInputs } from '@/context/UserInputsContext';
 import { useBleScan } from '@/hooks/useBleScan';
 
-// BLE scanning handled by useBleScan hook
-
 function getMockVehicleData(patente: string) {
   const brands = ['Toyota', 'Nissan', 'Hyundai', 'Chevrolet', 'Kia'];
   const models = ['Hilux', 'Versa', 'Accent', 'Sail', 'Rio'];
@@ -27,7 +25,6 @@ function getMockVehicleData(patente: string) {
 export default function MonitorScreen() {
   const { rut, patente } = useUserInputs();
   const displayName = useMemo(() => {
-    // If RUT contains letters, treat as a name; otherwise, show placeholder.
     return /[A-Za-z]/.test(rut) ? rut : 'Nombre Apellido';
   }, [rut]);
 
