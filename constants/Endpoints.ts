@@ -1,0 +1,1 @@
+export const backendUrl = "https://areas-verdes-backend.onrender.com/";
