@@ -1,1 +1,1 @@
-export const backendUrl = "https://areas-verdes-backend.onrender.com/";
+export const backendURL = "https://areas-verdes-backend.onrender.com/";

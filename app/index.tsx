@@ -8,24 +8,28 @@ import { Alert, Image, Linking, Pressable, StyleSheet, TextInput, View } from 'r
 
 export default function LandingScreen() {
   const router = useRouter();
-  const { patente, rut, setPatente, setRut } = useUserInputs();
+  const { patente, rut, signIn, loading, error } = useUserInputs();
   const [localPatente, setLocalPatente] = useState(patente);
   const [localRut, setLocalRut] = useState(rut);
 
   const [requestingPerms, setRequestingPerms] = useState(false);
-  const canContinue = localPatente.trim().length > 0 && localRut.trim().length > 0 && !requestingPerms;
+  const [authError, setAuthError] = useState<string | null>(null);
+  const canContinue = localPatente.trim().length > 0 && localRut.trim().length > 0 && !requestingPerms && !loading;
 
   const handleContinue = async () => {
+    setAuthError(null);
+    // 1. Autenticación contra backend
+    const okAuth = await signIn(localRut.trim(), localPatente.trim().toUpperCase());
+    if (!okAuth) {
+      setAuthError('Credenciales inválidas o error de servidor');
+      return;
+    }
+    // 2. Permisos
     setRequestingPerms(true);
     const { location, bluetooth } = await requestAllPermissions();
     setRequestingPerms(false);
-
-  const ok = location.foreground && location.background && bluetooth;
-    if (ok) {
-      setPatente(localPatente.trim().toUpperCase());
-      setRut(localRut.trim());
-      router.replace('/monitor');
-    } else {
+    const ok = location.foreground && location.background && bluetooth;
+    if (!ok) {
       Alert.alert(
         'Permisos necesarios',
         'Los permisos de ubicación (incluida en segundo plano) y de Bluetooth son necesarios para el funcionamiento de la aplicación.',
@@ -34,7 +38,10 @@ export default function LandingScreen() {
           { text: 'Ir a Configuración', onPress: () => { Linking.openSettings(); } },
         ]
       );
+      return;
     }
+    // 3. Navegar
+    router.replace('/monitor');
   };
 
   return (
@@ -78,6 +85,11 @@ export default function LandingScreen() {
           style={styles.input}
           accessibilityLabel="RUT del supervisor"
         />
+        {(error || authError) && (
+          <ThemedText style={{ color: 'crimson', marginTop: 8 }}>
+            {authError || error}
+          </ThemedText>
+        )}
       </View>
 
       <View style={{ height: 16 }} />
@@ -92,7 +104,11 @@ export default function LandingScreen() {
         accessibilityState={{ disabled: !canContinue }}
       >
         <ThemedText style={{ textAlign: 'center', color: 'white', fontWeight: '600' }}>
-          {requestingPerms ? 'Solicitando permisos…' : 'Continuar'}
+          {loading
+            ? 'Validando credenciales…'
+            : requestingPerms
+            ? 'Solicitando permisos…'
+            : 'Continuar'}
         </ThemedText>
       </Pressable>
     </ThemedView>

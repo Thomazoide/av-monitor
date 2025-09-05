@@ -1,10 +1,39 @@
+import { backendURL } from '@/constants/Endpoints';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
+
+type Supervisor = {
+  id: number;
+  fullName: string;
+  rut: string;
+  email?: string;
+  celular?: string;
+};
+
+type Vehicle = {
+  id: number;
+  patente: string;
+  marca?: string;
+  modelo?: string;
+};
+
+type Team = {
+  id: number;
+  nombre: string;
+  supervisorID: number;
+  vehiculoID: number;
+};
 
 type UserInputsContextType = {
   patente: string;
   rut: string;
   setPatente: (value: string) => void;
   setRut: (value: string) => void;
+  loading: boolean;
+  error: string | null;
+  supervisor?: Supervisor;
+  vehicle?: Vehicle;
+  team?: Team;
+  signIn: (rut: string, patente: string) => Promise<boolean>;
 };
 
 const UserInputsContext = createContext<UserInputsContextType | undefined>(undefined);
@@ -12,9 +41,63 @@ const UserInputsContext = createContext<UserInputsContextType | undefined>(undef
 export function UserInputsProvider({ children }: { children: ReactNode }) {
   const [patente, setPatente] = useState('');
   const [rut, setRut] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [supervisor, setSupervisor] = useState<Supervisor | undefined>();
+  const [vehicle, setVehicle] = useState<Vehicle | undefined>();
+  const [team, setTeam] = useState<Team | undefined>();
+
+  async function signIn(rutInput: string, patenteInput: string): Promise<boolean> {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${backendURL}equipos/sign-in`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rut: rutInput, patente: patenteInput }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        setError(`Error ${res.status}: ${txt}`);
+        setLoading(false);
+        return false;
+      }
+      const data = await res.json();
+      if (data?.data) {
+        const d = data.data;
+        setTeam({ id: d.id, nombre: d.nombre, supervisorID: d.supervisorID, vehiculoID: d.vehiculoID });
+        if (d.supervisor) {
+          setSupervisor({
+            id: d.supervisor.id,
+            fullName: d.supervisor.fullName,
+            rut: d.supervisor.rut,
+            email: d.supervisor.email,
+            celular: d.supervisor.celular,
+          });
+        }
+        if (d.vehiculo) {
+          setVehicle({
+            id: d.vehiculo.id,
+            patente: d.vehiculo.patente?.toUpperCase?.() || d.vehiculo.patente,
+            marca: d.vehiculo.marca,
+            modelo: d.vehiculo.modelo,
+          });
+        }
+        setPatente(patenteInput.toUpperCase());
+        setRut(rutInput);
+        setLoading(false);
+        return true;
+      }
+      setError('Respuesta inválida del servidor');
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setLoading(false);
+    return false;
+  }
 
   return (
-    <UserInputsContext.Provider value={{ patente, rut, setPatente, setRut }}>
+    <UserInputsContext.Provider value={{ patente, rut, setPatente, setRut, loading, error, supervisor, vehicle, team, signIn }}>
       {children}
     </UserInputsContext.Provider>
   );

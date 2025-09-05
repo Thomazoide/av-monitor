@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -8,27 +8,9 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useUserInputs } from '@/context/UserInputsContext';
 import { useBleScan } from '@/hooks/useBleScan';
 
-function getMockVehicleData(patente: string) {
-  const brands = ['Toyota', 'Nissan', 'Hyundai', 'Chevrolet', 'Kia'];
-  const models = ['Hilux', 'Versa', 'Accent', 'Sail', 'Rio'];
-  const colors = ['Blanco', 'Gris', 'Rojo', 'Azul', 'Negro'];
-  const hash = patente.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return {
-    patente,
-    brand: brands[hash % brands.length],
-    model: models[hash % models.length],
-    color: colors[hash % colors.length],
-    year: 2018 + (hash % 7),
-  };
-}
-
 export default function MonitorScreen() {
-  const { rut, patente } = useUserInputs();
-  const displayName = useMemo(() => {
-    return /[A-Za-z]/.test(rut) ? rut : 'Nombre Apellido';
-  }, [rut]);
-
-  const vehicle = useMemo(() => getMockVehicleData(patente || 'SIN-PATENTE'), [patente]);
+  const { rut, supervisor, vehicle, team, loading } = useUserInputs();
+  const displayName = supervisor?.fullName || '—';
   const { devices, scanning, error } = useBleScan();
 
   return (
@@ -39,17 +21,35 @@ export default function MonitorScreen() {
         Supervisor {displayName}
       </ThemedText>
       <ThemedText type="subtitle" style={styles.subtitle}>
-        RUT: {rut || '—'}
+        RUT: {supervisor?.rut || rut || '—'}
       </ThemedText>
 
       <ThemedView style={styles.card}>
+        <ThemedText type="subtitle" style={{ marginBottom: 4 }}>Equipo</ThemedText>
+        <ThemedText>
+          Nombre equipo: <ThemedText type="defaultSemiBold">{team?.nombre || '—'}</ThemedText>
+        </ThemedText>
+        <ThemedText>
+          Supervisor ID: {team?.supervisorID ?? '—'} • Vehículo ID: {team?.vehiculoID ?? '—'}
+        </ThemedText>
+      </ThemedView>
+
+      <View style={{ height: 12 }} />
+      <ThemedView style={styles.card}>
         <ThemedText type="subtitle" style={{ marginBottom: 4 }}>Vehículo</ThemedText>
-        <ThemedText>
-          Patente: <ThemedText type="defaultSemiBold">{vehicle.patente}</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          {vehicle.brand} {vehicle.model} • {vehicle.color} • {vehicle.year}
-        </ThemedText>
+        {vehicle ? (
+          <>
+            <ThemedText>
+              Patente: <ThemedText type="defaultSemiBold">{vehicle.patente}</ThemedText>
+            </ThemedText>
+            <ThemedText>
+              {(vehicle.marca || '—')} {(vehicle.modelo || '')}
+            </ThemedText>
+            <ThemedText style={{ opacity: 0.6 }}>ID: {vehicle.id}</ThemedText>
+          </>
+        ) : (
+          <ThemedText>{loading ? 'Cargando vehículo…' : 'Sin datos de vehículo'}</ThemedText>
+        )}
       </ThemedView>
 
       <View style={{ height: 12 }} />
