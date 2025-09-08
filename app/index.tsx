@@ -62,11 +62,11 @@ export default function LandingScreen() {
     // 3. Guardar / limpiar credenciales
     try {
       if (remember) {
-  await AsyncStorage.setItem('rememberCredentials', JSON.stringify({ patente: localPatente.trim().toUpperCase(), rut: localRut.trim() }));
-  await AsyncStorage.setItem('rememberCredentialsFlag', '1');
+        await AsyncStorage.setItem('rememberCredentials', JSON.stringify({ patente: localPatente.trim().toUpperCase(), rut: localRut.trim() }));
+        await AsyncStorage.setItem('rememberCredentialsFlag', '1');
       } else {
         await AsyncStorage.removeItem('rememberCredentials');
-  await AsyncStorage.removeItem('rememberCredentialsFlag');
+        await AsyncStorage.removeItem('rememberCredentialsFlag');
       }
     } catch {}
 
@@ -153,7 +153,7 @@ export default function LandingScreen() {
         <TextInput
           value={localRut}
           onChangeText={setLocalRut}
-          placeholder="Ej: 12.345.678-9"
+          placeholder="RUT sin puntos y con guión"
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="default"

@@ -13,6 +13,7 @@ export default function MonitorScreen() {
   const { rut, supervisor, vehicle, team, loading } = useUserInputs();
   const displayName = supervisor?.fullName || '—';
   const { devices, scanning, error } = useBleScan();
+  
   usePositionSocket();
 
   return (

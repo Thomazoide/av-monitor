@@ -36,15 +36,16 @@ export function usePositionSocket() {
             velocidad: loc.coords.speed ?? 0.0,
             timestamp: new Date().toISOString()
         };
-        socket.emit('acatualizar-posicion', payload);
-      } catch {
+        socket.emit('actualizar-posicion', payload);
+      } catch(e) {
+        console.log("Si se muestra eso es porque tenemos un error al enviar la ubicación al back, el error sería el siguiente: ", (e as Error).message);
         // Silenciar errores de posición para no saturar logs
       }
     };
 
     // Emitir inmediatamente y luego cada 5s
     emitPosition();
-  intervalRef.current = setInterval(emitPosition, 5000) as unknown as number;
+    intervalRef.current = setInterval(emitPosition, 5000) as unknown as number;
 
     return () => {
     if (intervalRef.current) clearInterval(intervalRef.current);

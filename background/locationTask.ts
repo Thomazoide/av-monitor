@@ -25,7 +25,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     const { latitude, longitude } = latest.coords || {};
     if (typeof latitude !== 'number' || typeof longitude !== 'number') return;
 
-    const socket = io(backendURL, { transports: ['websocket'], forceNew: true, reconnectionAttempts: 1 });
+    const socket = io(`${backendURL}position`, { transports: ['websocket'], forceNew: true, reconnectionAttempts: 1 });
     const payload: any = {
       id: vehicle.id,
       patente: vehicle.patente,
