@@ -1,5 +1,6 @@
 import { backendURL } from '@/constants/Endpoints';
 import { useUserInputs } from '@/context/UserInputsContext';
+import { Record } from '@/declarations/payloads';
 import { useEffect, useRef, useState } from 'react';
 import type { BleError } from 'react-native-ble-plx';
 import { BleManager, Device } from 'react-native-ble-plx';
@@ -28,12 +29,11 @@ export function useBleScan() {
   const seen = useRef<Map<string, ScannedDevice>>(new Map());
   const activeRef = useRef<boolean>(false);
   const managerRef = useRef<BleManager | null>(null);
-  const validating = useRef<Set<string>>(new Set()); // macs currently being validated
+  const validating = useRef<Set<string>>(new Set()); // indica si la MAC encontrada se está validando
   const activeVisitsRef = useRef<Map<string, ActiveVisit>>(new Map()); // mac -> active visit
   const intervalRef = useRef<any>(null);
-  const { rut } = useUserInputs();
+  const { rut, supervisor } = useUserInputs();
 
-  // Initialize BLE scanning on mount; teardown on unmount
   useEffect(() => {
     setScanning(true);
     setError(null);
@@ -242,12 +242,12 @@ export function useBleScan() {
     }
   }
 
-  function buildRecord(zoneId: number, arrivalMs: number, leaveMs: number, rutStr: string) {
+  function buildRecord(zoneId: number, arrivalMs: number, leaveMs: number, rutStr: string): Partial<Record> {
     const fecha = formatDate(new Date(arrivalMs));
     const hora_llegada = formatTime(new Date(arrivalMs));
     const hora_salida = formatTime(new Date(leaveMs));
-    const id_supervisor = parseRutToNumber(rutStr);
-    return { fecha, id_zona: zoneId, hora_llegada, hora_salida, id_supervisor } as const;
+    const supervisor_id = supervisor!.id;
+    return { fecha, id_zona: zoneId, hora_llegada, hora_salida, supervisor_id } as const;
   }
 
   async function postRegistro(body: ReturnType<typeof buildRecord>) {

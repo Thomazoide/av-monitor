@@ -1,27 +1,7 @@
 import { backendURL } from '@/constants/Endpoints';
+import { Equipo, Supervisor, Vehiculo } from '@/declarations/payloads';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
-
-type Supervisor = {
-  id: number;
-  fullName: string;
-  rut: string;
-  email?: string;
-  celular?: string;
-};
-
-type Vehicle = {
-  id: number;
-  patente: string;
-  marca?: string;
-  modelo?: string;
-};
-
-type Team = {
-  id: number;
-  nombre: string;
-  supervisorID: number;
-  vehiculoID: number;
-};
 
 type UserInputsContextType = {
   patente: string;
@@ -30,9 +10,9 @@ type UserInputsContextType = {
   setRut: (value: string) => void;
   loading: boolean;
   error: string | null;
-  supervisor?: Supervisor;
-  vehicle?: Vehicle;
-  team?: Team;
+  supervisor?: Partial<Supervisor>;
+  vehicle?: Partial<Vehiculo>;
+  team?: Equipo;
   signIn: (rut: string, patente: string) => Promise<boolean>;
 };
 
@@ -43,9 +23,9 @@ export function UserInputsProvider({ children }: { children: ReactNode }) {
   const [rut, setRut] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [supervisor, setSupervisor] = useState<Supervisor | undefined>();
-  const [vehicle, setVehicle] = useState<Vehicle | undefined>();
-  const [team, setTeam] = useState<Team | undefined>();
+  const [supervisor, setSupervisor] = useState<Partial<Supervisor> | undefined>();
+  const [vehicle, setVehicle] = useState<Partial<Vehiculo> | undefined>();
+  const [team, setTeam] = useState<Equipo | undefined>();
 
   async function signIn(rutInput: string, patenteInput: string): Promise<boolean> {
     setLoading(true);
@@ -64,7 +44,7 @@ export function UserInputsProvider({ children }: { children: ReactNode }) {
       }
       const data = await res.json();
       if (data?.data) {
-        const d = data.data;
+        const d: Equipo = data.data;
         setTeam({ id: d.id, nombre: d.nombre, supervisorID: d.supervisorID, vehiculoID: d.vehiculoID });
         if (d.supervisor) {
           setSupervisor({
@@ -72,16 +52,18 @@ export function UserInputsProvider({ children }: { children: ReactNode }) {
             fullName: d.supervisor.fullName,
             rut: d.supervisor.rut,
             email: d.supervisor.email,
-            celular: d.supervisor.celular,
+            celular: d.supervisor.celular
           });
         }
         if (d.vehiculo) {
-          setVehicle({
+          const vehData: Partial<Vehiculo> = {
             id: d.vehiculo.id,
             patente: d.vehiculo.patente?.toUpperCase?.() || d.vehiculo.patente,
             marca: d.vehiculo.marca,
             modelo: d.vehiculo.modelo,
-          });
+          };
+          setVehicle(vehData);
+          try { await AsyncStorage.setItem('vehicleInfo', JSON.stringify(vehData)); } catch {}
         }
         setPatente(patenteInput.toUpperCase());
         setRut(rutInput);

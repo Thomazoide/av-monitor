@@ -7,18 +7,20 @@ import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useUserInputs } from '@/context/UserInputsContext';
 import { useBleScan } from '@/hooks/useBleScan';
+import { usePositionSocket } from '@/hooks/usePositionSocket';
 
 export default function MonitorScreen() {
   const { rut, supervisor, vehicle, team, loading } = useUserInputs();
   const displayName = supervisor?.fullName || '—';
   const { devices, scanning, error } = useBleScan();
+  usePositionSocket();
 
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <ThemedText type="title" style={styles.title}>
-        Supervisor {displayName}
+        Supervisor/a {displayName}
       </ThemedText>
       <ThemedText type="subtitle" style={styles.subtitle}>
         RUT: {supervisor?.rut || rut || '—'}

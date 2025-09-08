@@ -2,8 +2,10 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useUserInputs } from '@/context/UserInputsContext';
 import { requestAllPermissions } from '@/hooks/usePermissions';
+import { startBackgroundTracking } from '@/services/backgroundTracking';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, Linking, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 export default function LandingScreen() {
@@ -14,7 +16,24 @@ export default function LandingScreen() {
 
   const [requestingPerms, setRequestingPerms] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [remember, setRemember] = useState(false);
   const canContinue = localPatente.trim().length > 0 && localRut.trim().length > 0 && !requestingPerms && !loading;
+
+  // Cargar credenciales recordadas
+  useEffect(() => {
+    (async () => {
+      try {
+        const flag = await AsyncStorage.getItem('rememberCredentialsFlag');
+        if (flag === '1') setRemember(true);
+        const raw = await AsyncStorage.getItem('rememberCredentials');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.patente) setLocalPatente(parsed.patente);
+          if (parsed?.rut) setLocalRut(parsed.rut);
+        }
+      } catch {}
+    })();
+  }, []);
 
   const handleContinue = async () => {
     setAuthError(null);
@@ -40,7 +59,20 @@ export default function LandingScreen() {
       );
       return;
     }
-    // 3. Navegar
+    // 3. Guardar / limpiar credenciales
+    try {
+      if (remember) {
+  await AsyncStorage.setItem('rememberCredentials', JSON.stringify({ patente: localPatente.trim().toUpperCase(), rut: localRut.trim() }));
+  await AsyncStorage.setItem('rememberCredentialsFlag', '1');
+      } else {
+        await AsyncStorage.removeItem('rememberCredentials');
+  await AsyncStorage.removeItem('rememberCredentialsFlag');
+      }
+    } catch {}
+
+    // 4. Iniciar tracking en segundo plano
+    await startBackgroundTracking();
+    // 5. Navegar
     router.replace('/monitor');
   };
 
@@ -59,6 +91,49 @@ export default function LandingScreen() {
         <ThemedText style={{ textAlign: 'center', opacity: 0.7 }}>
           Supervisión de Áreas Verdes
         </ThemedText>
+      </View>
+
+      <View style={styles.rememberRow}>
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: remember }}
+          onPress={async () => {
+            const next = !remember;
+            setRemember(next);
+            try {
+              if (next) {
+                await AsyncStorage.setItem('rememberCredentialsFlag', '1');
+                // If user toggles on after escribir, ensure we persist current inputs too
+                if (localPatente && localRut) {
+                  await AsyncStorage.setItem('rememberCredentials', JSON.stringify({ patente: localPatente.trim().toUpperCase(), rut: localRut.trim() }));
+                }
+              } else {
+                await AsyncStorage.removeItem('rememberCredentialsFlag');
+                await AsyncStorage.removeItem('rememberCredentials');
+              }
+            } catch {}
+          }}
+          style={({ pressed }) => [styles.checkbox, remember && styles.checkboxChecked, pressed && { opacity: 0.7 }]}
+        >
+          {remember && <ThemedText style={styles.checkboxMark}>✓</ThemedText>}
+        </Pressable>
+        <Pressable onPress={async () => {
+          const next = !remember;
+          setRemember(next);
+          try {
+            if (next) {
+              await AsyncStorage.setItem('rememberCredentialsFlag', '1');
+              if (localPatente && localRut) {
+                await AsyncStorage.setItem('rememberCredentials', JSON.stringify({ patente: localPatente.trim().toUpperCase(), rut: localRut.trim() }));
+              }
+            } else {
+              await AsyncStorage.removeItem('rememberCredentialsFlag');
+              await AsyncStorage.removeItem('rememberCredentials');
+            }
+          } catch {}
+        }} style={{ flexShrink: 1 }}>
+          <ThemedText style={{ marginLeft: 8 }}>Recordar mis datos</ThemedText>
+        </Pressable>
       </View>
 
       <View style={styles.form}>
@@ -138,4 +213,31 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     opacity: 1,
   },
+  rememberRow: {
+    width: '100%',
+    maxWidth: 480,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#888',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white'
+  },
+  checkboxChecked: {
+    backgroundColor: '#0a7ea4',
+    borderColor: '#0a7ea4'
+  },
+  checkboxMark: {
+    color: 'white',
+    fontWeight: '900',
+    fontSize: 14,
+    lineHeight: 14,
+  }
 });
