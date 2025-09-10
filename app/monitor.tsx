@@ -1,6 +1,6 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { Button, FlatList, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -13,6 +13,7 @@ export default function MonitorScreen() {
   const { rut, supervisor, vehicle, team, loading } = useUserInputs();
   const displayName = supervisor?.fullName || '—';
   const { devices, scanning, error } = useBleScan();
+  const router = useRouter();
   
   usePositionSocket();
 
@@ -77,6 +78,7 @@ export default function MonitorScreen() {
                 <ThemedText type="defaultSemiBold">{item.name || 'Dispositivo sin nombre'}</ThemedText>
                 <ThemedText style={{ opacity: 0.6 }}>RSSI: {item.rssi ?? '—'}</ThemedText>
                 <ThemedText style={{ opacity: 0.6 }}>ID: {item.id}</ThemedText>
+                <Button title='Formulario de visita' color="#4a98c4" />
               </ThemedView>
             )}
             ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
