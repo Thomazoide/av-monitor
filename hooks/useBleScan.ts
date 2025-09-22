@@ -9,6 +9,7 @@ export type ScannedDevice = {
   id: string;
   name?: string | null; // Will hold zone name when validated
   rssi?: number | null;
+  zoneId?: number;
 };
 
 type ValidationResult = { zoneId: number; zoneName: string } | null;
@@ -80,7 +81,7 @@ export function useBleScan() {
           .then((res) => {
             if (!activeRef.current) return;
             if (res) {
-              const entry: ScannedDevice = { id: mac, name: res.zoneName, rssi: device.rssi };
+              const entry: ScannedDevice = { id: mac, name: res.zoneName, rssi: device.rssi, zoneId: res.zoneId };
               seen.current.set(mac, entry);
               setDevices(Array.from(seen.current.values()));
               const now = Date.now();
@@ -101,25 +102,31 @@ export function useBleScan() {
       }
     });
 
+    // Snapshot current state for cleanup
+    const activeVisitsSnapshot = new Map(activeVisitsRef.current);
+    const managerSnapshot = managerRef.current;
+    const intervalSnapshot = intervalRef.current;
+
     return () => {
       // Inline cleanup equivalent to stop() to avoid adding it as a dependency
       if (activeRef.current) {
         activeRef.current = false;
-        managerRef.current?.stopDeviceScan();
+        managerSnapshot?.stopDeviceScan();
       }
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      if (intervalSnapshot) {
+        clearInterval(intervalSnapshot);
         intervalRef.current = null;
       }
       const now = Date.now();
-      activeVisitsRef.current.forEach((visit, mac) => {
+      activeVisitsSnapshot.forEach((visit, mac) => {
         const record = buildRecord(visit.zoneId, visit.arrival, visit.lastSeen || now, rut);
         postRegistro(record).finally(() => {
-          activeVisitsRef.current.delete(mac);
+          // no-op: snapshot cleanup
         });
       });
       setScanning(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function stop() {
@@ -188,7 +195,7 @@ export function useBleScan() {
           .then((res) => {
             if (!activeRef.current) return;
             if (res) {
-              const entry: ScannedDevice = { id: mac, name: res.zoneName, rssi: device.rssi };
+              const entry: ScannedDevice = { id: mac, name: res.zoneName, rssi: device.rssi, zoneId: res.zoneId };
               seen.current.set(mac, entry);
               setDevices(Array.from(seen.current.values()));
               const now = Date.now();
@@ -275,15 +282,7 @@ export function useBleScan() {
     return `${hh}:${mi}`;
   }
 
-  function parseRutToNumber(rutStr: string): number {
-    if (!rutStr) return 0;
-    const digits = rutStr.replace(/[^0-9]/g, '');
-    if (!digits) return 0;
-    // Commonly RUT includes DV at end; drop last digit as DV
-    const core = digits.length > 7 ? digits.slice(0, -1) : digits;
-    const n = parseInt(core, 10);
-    return Number.isFinite(n) ? n : 0;
-  }
+  // removed unused parseRutToNumber
 
   return { devices, scanning, error, start, stop };
 }

@@ -10,10 +10,10 @@ import { useBleScan } from '@/hooks/useBleScan';
 import { usePositionSocket } from '@/hooks/usePositionSocket';
 
 export default function MonitorScreen() {
+  const router = useRouter();
   const { rut, supervisor, vehicle, team, loading } = useUserInputs();
   const displayName = supervisor?.fullName || '—';
   const { devices, scanning, error } = useBleScan();
-  const router = useRouter();
   
   usePositionSocket();
 
@@ -78,10 +78,15 @@ export default function MonitorScreen() {
                 <ThemedText type="defaultSemiBold">{item.name || 'Dispositivo sin nombre'}</ThemedText>
                 <ThemedText style={{ opacity: 0.6 }}>RSSI: {item.rssi ?? '—'}</ThemedText>
                 <ThemedText style={{ opacity: 0.6 }}>ID: {item.id}</ThemedText>
-                <Button title='Formulario de visita' color="#4a98c4" />
+                <Button
+                  testID='VISITFORMBUTTON'
+                  title='Formulario de visita'
+                  color="#4a98c4"
+                  onPress={() => router.push((`/visit-form?zoneId=${encodeURIComponent(String((item as any).zoneId ?? ''))}&zoneName=${encodeURIComponent(item.name || '')}&mac=${encodeURIComponent(item.id)}`) as any)}
+                />
               </ThemedView>
             )}
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            ItemSeparatorComponent={() => <View style={{ height: 8, borderBottomWidth: 1, borderBottomColor: "#4a98c4" }} />}
           />
         )}
       </ThemedView>
