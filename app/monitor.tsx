@@ -82,7 +82,7 @@ export default function MonitorScreen() {
                   testID='VISITFORMBUTTON'
                   title='Formulario de visita'
                   color="#4a98c4"
-                  onPress={() => router.push((`/visit-form?zoneId=${encodeURIComponent(String((item as any).zoneId ?? ''))}&zoneName=${encodeURIComponent(item.name || '')}&mac=${encodeURIComponent(item.id)}`) as any)}
+                  onPress={() => router.push((`/visit-form?zoneId=${encodeURIComponent(String((item as any).zoneId ?? ''))}&zoneName=${encodeURIComponent(item.name || '')}&mac=${encodeURIComponent(item.id)}&supervisorId=${encodeURIComponent(supervisor!.id!)}`) as any)}
                 />
               </ThemedView>
             )}

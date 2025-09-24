@@ -93,3 +93,24 @@ export interface Record {
     hora_salida: string;
     supervisor_id: number;
 }
+
+export interface VisitFormData {
+    id: number;
+    fecha: string;
+    zona_id: number;
+    supervisor_id: number;
+    supervisor?: Supervisor;
+    zona?: Zona;
+    comentarios: string;
+    requiere_corte_cesped: boolean;
+    hay_gente_acampando: boolean;
+    mobiliario_danado: boolean;
+    nivel_de_basura: NIVEL_DE_BASURA;
+    foto: string | null;
+}
+
+export enum NIVEL_DE_BASURA {
+    BAJO = "BAJO",
+    MEDIO = "MEDIO",
+    ALTO = "ALTO"
+}

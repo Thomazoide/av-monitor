@@ -5,19 +5,22 @@ import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, TextInput, Vi
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { backendURL } from '@/constants/Endpoints';
+import { NIVEL_DE_BASURA, responsePayload, VisitFormData } from '@/declarations/payloads';
 
 export default function VisitFormScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ zoneId?: string; zoneName?: string; mac?: string }>();
+  const params = useLocalSearchParams<{ zoneId?: string; zoneName?: string; mac?: string, supervisorId?: string }>();
   const [unusual, setUnusual] = useState('');
   const [needsGrassCut, setNeedsGrassCut] = useState(false);
   const [camping, setCamping] = useState(false);
   const [brokenFurniture, setBrokenFurniture] = useState(false);
-  const [trashLevel, setTrashLevel] = useState<'bajo' | 'medio' | 'alto'>('bajo');
+  const [trashLevel, setTrashLevel] = useState<NIVEL_DE_BASURA>(NIVEL_DE_BASURA.BAJO);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [sendingForm, setSendingForm] = useState<boolean>(false);
 
   const zoneName = params.zoneName || 'Zona desconocida';
 
@@ -54,9 +57,47 @@ export default function VisitFormScreen() {
   };
 
   const handleSubmit = async () => {
-    // TODO: Integrar con backend si existe endpoint para formularios de visita
-    Alert.alert('Formulario enviado', 'Gracias por el reporte.');
-    router.back();
+    setSendingForm(true);
+    try {
+      const formData = new FormData();
+      formData.append("fecha", (new Date()).toISOString());
+      formData.append("zona_id", String(params.zoneId));
+      formData.append("supervisor_id", String(params.supervisorId));
+      formData.append("comentarios", unusual);
+      formData.append("requiere_corte_cesped", needsGrassCut ? "true" : "false");
+      formData.append("hay_gente_acampando", camping ? "true" : "false");
+      formData.append("mobiliario_danado", brokenFurniture ? "true" : "false");
+      formData.append("nivel_de_basura", trashLevel);
+      if(photoUri) {
+        const filename = `foto_${Date.now()}.jpg`;
+        formData.append("foto", {
+          uri: photoUri,
+          name: filename,
+          type: "image/jpeg"
+        } as any);
+      }
+      const response = await fetch( `${backendURL}formularios`, {
+        method: "POST",
+        body: formData
+      } );
+      const json: responsePayload<VisitFormData> = await response.json().catch((e) => console.log(`\n\n\nEl error podría estar aqui: ${e}\n\n\n`));
+      if(!response.ok || (json && json.error)) throw new Error(json.message);
+      Alert.alert("Formulario enviado", "Gracias por el reporte.", [
+        {
+          text: "OK", onPress: () => router.back()
+        }
+      ]);
+    } catch(e) {
+      console.log(`\n\n\nPordía ser aca el error: ${e}\n\n\n`)
+      Alert.alert("Error al enviar el formulario", (e as Error).message, [
+        {
+          text: "Aceptar",
+          onPress: () => router.back()
+        }
+      ]);
+    } finally {
+      setSendingForm(false);
+    }
   };
 
   return (
@@ -100,7 +141,7 @@ export default function VisitFormScreen() {
 
         <ThemedText style={styles.label}>Nivel de basura</ThemedText>
         <View style={[styles.row, { marginBottom: 12 }]}>
-          {(['bajo','medio','alto'] as const).map(level => (
+          {Object.values(NIVEL_DE_BASURA).map(level => (
             <Pressable key={level} onPress={() => setTrashLevel(level)} style={[styles.pill, trashLevel === level && styles.pillActive]}>
               <ThemedText style={[styles.pillText, trashLevel === level && { color: 'white' }]}>
                 {level.toUpperCase()}
@@ -131,7 +172,7 @@ export default function VisitFormScreen() {
           </View>
         )}
 
-        <Pressable onPress={handleSubmit} style={styles.submitButton}>
+        <Pressable onPress={handleSubmit} style={styles.submitButton} disabled={sendingForm}>
           <ThemedText style={{ color: 'white', textAlign: 'center', fontWeight: '600' }}>Enviar reporte</ThemedText>
         </Pressable>
       </ScrollView>
