@@ -1,16 +1,23 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { backendURL } from '@/constants/Endpoints';
-import { NIVEL_DE_BASURA, responsePayload, VisitFormData } from '@/declarations/payloads';
+import { NIVEL_DE_BASURA, responsePayload, VisitFormData, WorkOrder } from '@/declarations/payloads';
 
 export default function VisitFormScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ zoneId?: string; zoneName?: string; mac?: string, supervisorId?: string }>();
+  const params = useLocalSearchParams<{
+    zoneId?: string;
+    zoneName?: string;
+    mac?: string;
+    supervisorId?: string;
+    orderId?: string;
+    orderData?: string;
+  }>();
   const [unusual, setUnusual] = useState('');
   const [needsGrassCut, setNeedsGrassCut] = useState(false);
   const [camping, setCamping] = useState(false);
@@ -22,7 +29,45 @@ export default function VisitFormScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [sendingForm, setSendingForm] = useState<boolean>(false);
 
-  const zoneName = params.zoneName || 'Zona desconocida';
+  type SerializableWorkOrder = Omit<WorkOrder, 'creada_en' | 'completada_en'> & {
+    creada_en: string | null;
+    completada_en: string | null;
+  };
+
+  const parsedOrder = useMemo<SerializableWorkOrder | null>(() => {
+    if (!params.orderData) {
+      return null;
+    }
+    try {
+      const raw = JSON.parse(params.orderData) as SerializableWorkOrder;
+      return raw;
+    } catch (error) {
+      console.warn('No se pudo parsear la orden recibida', error);
+      return null;
+    }
+  }, [params.orderData]);
+
+  const resolvedZoneId = useMemo(() => {
+    if (params.zoneId) return params.zoneId;
+    if (parsedOrder?.zona?.id != null) return String(parsedOrder.zona.id);
+    if (parsedOrder?.zonaID != null) return String(parsedOrder.zonaID);
+    return undefined;
+  }, [params.zoneId, parsedOrder]);
+
+  const resolvedSupervisorId = useMemo(() => {
+    if (params.supervisorId) return params.supervisorId;
+    if (parsedOrder?.visitForm?.supervisor_id != null) {
+      return String(parsedOrder.visitForm.supervisor_id);
+    }
+    if (parsedOrder?.equipo?.supervisorID != null) {
+      return String(parsedOrder.equipo.supervisorID);
+    }
+    return undefined;
+  }, [params.supervisorId, parsedOrder]);
+
+  const zoneName = useMemo(() => {
+    return params.zoneName || parsedOrder?.zona?.name || 'Zona desconocida';
+  }, [params.zoneName, parsedOrder]);
 
   const pickPhoto = async () => {
     // 1) Revisar permiso actual; si no está concedido, pedirlo
@@ -59,10 +104,17 @@ export default function VisitFormScreen() {
   const handleSubmit = async () => {
     setSendingForm(true);
     try {
+      if (!resolvedZoneId) {
+        throw new Error('No se pudo determinar la zona asociada a la orden.');
+      }
+      if (!resolvedSupervisorId) {
+        throw new Error('No se pudo determinar el supervisor asociado.');
+      }
+
       const formData = new FormData();
       formData.append("fecha", (new Date()).toISOString());
-      formData.append("zona_id", String(params.zoneId));
-      formData.append("supervisor_id", String(params.supervisorId));
+      formData.append("zona_id", resolvedZoneId);
+      formData.append("supervisor_id", resolvedSupervisorId);
       formData.append("comentarios", unusual);
       formData.append("requiere_corte_cesped", needsGrassCut ? "true" : "false");
       formData.append("hay_gente_acampando", camping ? "true" : "false");
@@ -82,6 +134,60 @@ export default function VisitFormScreen() {
       } );
       const json: responsePayload<VisitFormData> = await response.json().catch((e) => console.log(`\n\n\nEl error podría estar aqui: ${e}\n\n\n`));
       if(!response.ok || (json && json.error)) throw new Error(json.message);
+
+      const submittedForm = json.data;
+
+      if (params.orderId && parsedOrder) {
+        try {
+          const nowIso = new Date().toISOString();
+          const updatedOrder: SerializableWorkOrder = {
+            ...parsedOrder,
+            completada: true,
+            completada_en: nowIso,
+            visitFormID: submittedForm?.id ?? parsedOrder.visitFormID ?? null,
+            visitForm: submittedForm ?? parsedOrder.visitForm ?? null,
+          };
+          updatedOrder.creada_en = updatedOrder.creada_en ?? nowIso;
+          updatedOrder.zona = submittedForm?.zona ?? parsedOrder.zona ?? null;
+
+          const orderResponse = await fetch(`${backendURL}ordenes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedOrder),
+          });
+
+          if (!orderResponse.ok) {
+            const errorText = await orderResponse.text();
+            throw new Error(errorText || 'No se pudo actualizar la orden.');
+          }
+        } catch (orderError) {
+          console.warn('No se pudo completar la orden automáticamente', orderError);
+          Alert.alert(
+            'Formulario enviado',
+            'El formulario se registró, pero no se pudo marcar la orden como completada. Intenta nuevamente desde la lista de órdenes.',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.back(),
+              },
+            ],
+          );
+          return;
+        }
+      } else if (params.orderId && !parsedOrder) {
+        Alert.alert(
+          'Formulario enviado',
+          'El formulario se registró, pero faltó información de la orden para completarla automáticamente. Actualízala manualmente.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.back(),
+            },
+          ],
+        );
+        return;
+      }
+
       Alert.alert("Formulario enviado", "Gracias por el reporte.", [
         {
           text: "OK", onPress: () => router.back()
@@ -105,8 +211,8 @@ export default function VisitFormScreen() {
       <Stack.Screen options={{ title: 'Formulario de visita' }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         <ThemedText type="title" style={{ marginBottom: 8 }}>{zoneName}</ThemedText>
-        {params.zoneId && (
-          <ThemedText style={{ opacity: 0.7, marginBottom: 12 }}>ID zona: {params.zoneId}</ThemedText>
+        {resolvedZoneId && (
+          <ThemedText style={{ opacity: 0.7, marginBottom: 12 }}>ID zona: {resolvedZoneId}</ThemedText>
         )}
 
         <ThemedText style={styles.label}>¿Algo fuera de lo común?</ThemedText>

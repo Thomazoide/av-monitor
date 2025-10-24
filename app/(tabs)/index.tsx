@@ -1,75 +1,122 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback } from 'react';
+import { Button, FlatList, StyleSheet, View } from 'react-native';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useOrders } from '@/context/OrdersContext';
+import { useUserInputs } from '@/context/UserInputsContext';
+import { useBleScan } from '@/hooks/useBleScan';
+import { usePositionSocket } from '@/hooks/usePositionSocket';
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const { rut, supervisor, vehicle, team, loading } = useUserInputs();
+  const displayName = supervisor?.fullName || '—';
+  const { devices, scanning, error } = useBleScan();
+  const { fetchOrders } = useOrders();
+
+  usePositionSocket();
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchOrders(false);
+    }, [fetchOrders]),
+  );
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
+    <ThemedView style={styles.container}>
+      <ThemedText type="title" style={styles.title}>
+        Supervisor/a {displayName}
+      </ThemedText>
+      <ThemedText type="subtitle" style={styles.subtitle}>
+        RUT: {supervisor?.rut || rut || '—'}
+      </ThemedText>
+
+      <ThemedView style={styles.card}>
+        <ThemedText type="subtitle" style={{ marginBottom: 4 }}>Equipo</ThemedText>
         <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
+          Nombre equipo: <ThemedText type="defaultSemiBold">{team?.nombre || '—'}</ThemedText>
+        </ThemedText>
+        <ThemedText>
+          Supervisor ID: {team?.supervisorID ?? '—'} • Vehículo ID: {team?.vehiculoID ?? '—'}
         </ThemedText>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
+
+      <View style={{ height: 12 }} />
+      <ThemedView style={styles.card}>
+        <ThemedText type="subtitle" style={{ marginBottom: 4 }}>Vehículo</ThemedText>
+        {vehicle ? (
+          <>
+            <ThemedText>
+              Patente: <ThemedText type="defaultSemiBold">{vehicle.patente}</ThemedText>
+            </ThemedText>
+            <ThemedText>
+              {(vehicle.marca || '—')} {(vehicle.modelo || '')}
+            </ThemedText>
+            <ThemedText style={{ opacity: 0.6 }}>ID: {vehicle.id}</ThemedText>
+          </>
+        ) : (
+          <ThemedText>{loading ? 'Cargando vehículo…' : 'Sin datos de vehículo'}</ThemedText>
+        )}
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
+
+      <View style={{ height: 12 }} />
+      <ThemedView style={[styles.card, styles.row]}>
+        <IconSymbol name="mappin.and.ellipse" color="#0a7ea4" size={22} style={{ marginRight: 8 }} />
+        <ThemedText>Compartiendo la ubicación con la central…</ThemedText>
       </ThemedView>
-    </ParallaxScrollView>
+
+      <View style={{ height: 12 }} />
+      <ThemedView style={styles.card}>
+        <ThemedText type="subtitle" style={{ marginBottom: 8 }}>Dispositivos BLE cercanos</ThemedText>
+        {error ? (
+          <ThemedText style={{ color: 'crimson' }}>Error al escanear: {error}</ThemedText>
+        ) : devices.length === 0 ? (
+          <ThemedText>{scanning ? 'Escaneando dispositivos cercanos…' : 'No se detectaron dispositivos.'}</ThemedText>
+        ) : (
+          <FlatList
+            data={devices}
+            keyExtractor={(d) => d.id}
+            renderItem={({ item }) => (
+              <ThemedView style={styles.deviceRow}>
+                <ThemedText type="defaultSemiBold">{item.name || 'Dispositivo sin nombre'}</ThemedText>
+                <ThemedText style={{ opacity: 0.6 }}>RSSI: {item.rssi ?? '—'}</ThemedText>
+                <ThemedText style={{ opacity: 0.6 }}>ID: {item.id}</ThemedText>
+                <Button
+                  testID='VISITFORMBUTTON'
+                  title='Formulario de visita'
+                  color="#4a98c4"
+                  onPress={() => router.push((`/visit-form?zoneId=${encodeURIComponent(String((item as any).zoneId ?? ''))}&zoneName=${encodeURIComponent(item.name || '')}&mac=${encodeURIComponent(item.id)}&supervisorId=${encodeURIComponent(supervisor!.id!)}`) as any)}
+                />
+              </ThemedView>
+            )}
+            ItemSeparatorComponent={() => <View style={{ height: 8, borderBottomWidth: 1, borderBottomColor: "#4a98c4" }} />}
+          />
+        )}
+      </ThemedView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1, padding: 24 },
+  title: { textAlign: 'left', marginBottom: 2 },
+  subtitle: { opacity: 0.7, marginBottom: 16 },
+  card: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: 'white',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  row: { flexDirection: 'row', alignItems: 'center' },
+  deviceRow: {
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: 'white',
   },
 });

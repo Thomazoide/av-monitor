@@ -73,7 +73,7 @@ export default function LandingScreen() {
     // 4. Iniciar tracking en segundo plano
     await startBackgroundTracking();
     // 5. Navegar
-    router.replace('/monitor');
+  router.replace('/(tabs)');
   };
 
   return (

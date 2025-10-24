@@ -107,10 +107,31 @@ export interface VisitFormData {
     mobiliario_danado: boolean;
     nivel_de_basura: NIVEL_DE_BASURA;
     foto: string | null;
+    orderID: number | null;
 }
 
 export enum NIVEL_DE_BASURA {
     BAJO = "BAJO",
     MEDIO = "MEDIO",
     ALTO = "ALTO"
+}
+
+export type WorkOrderType = "Areas verdes" | "Emergencias" | "Obras publicas" | string;
+
+export interface WorkOrder {
+    id: number;
+    titulo?: string | null;
+    descripcion?: string | null;
+    estado?: string | null;
+    prioridad?: string | null;
+    creada_en: string | Date | null;
+    completada?: boolean | null;
+    completada_en: string | Date | null;
+    equipoID: number | null;
+    equipo?: Equipo | null;
+    visitFormID: number | null;
+    visitForm?: VisitFormData | null;
+    tipo?: WorkOrderType | null;
+    zonaID?: number | null;
+    zona?: Zona | null;
 }
