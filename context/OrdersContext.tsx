@@ -1,12 +1,12 @@
 import React, {
-    createContext,
-    ReactNode,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { Platform } from 'react-native';
 
@@ -152,7 +152,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }, [storageKey]);
 
   const fetchOrders = useCallback(
-    async (showLoader = true) => {
+    async (showLoader = false) => {
       if (!team?.id) {
         if (showLoader) {
           setLoading(false);
@@ -238,6 +238,16 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void fetchOrders(false);
   }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!team?.id) {
+      return undefined;
+    }
+    const interval = setInterval(() => {
+      void fetchOrders(false);
+    }, 15_000);
+    return () => clearInterval(interval);
+  }, [team?.id, fetchOrders]);
 
   const refresh = useCallback(async () => {
     await fetchOrders(false);
