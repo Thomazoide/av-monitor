@@ -116,6 +116,16 @@ export enum NIVEL_DE_BASURA {
     ALTO = "ALTO"
 }
 
+export interface SuperForm {
+    id: number;
+    description: string | null;
+    pictureUrl: string;
+    workOrderID: number | null;
+    workOrder: WorkOrder | null;
+    lat: number;
+    lng: number;
+}
+
 export type WorkOrderType = "Areas verdes" | "Emergencias" | "Obras publicas" | string;
 
 export interface WorkOrder {
@@ -134,4 +144,9 @@ export interface WorkOrder {
     tipo?: WorkOrderType | null;
     zonaID?: number | null;
     zona?: Zona | null;
+    superFormID: number | null;
+    superForm: SuperForm | null;
+    lat: number | null;
+    lng: number | null;
+    reference?: string;
 }

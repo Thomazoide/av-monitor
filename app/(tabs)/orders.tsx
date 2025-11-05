@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Linking, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { useFocusEffect, useRouter } from 'expo-router';
 
@@ -58,6 +58,23 @@ export default function OrdersScreen() {
     const description = item.descripcion || item.titulo || `Orden #${item.id}`;
 
     const supervisorName = item.visitForm?.supervisor?.fullName;
+    const superFormImage = item.superForm?.pictureUrl?.trim() || null;
+    const reference = item.reference;
+
+    const parseCoordinate = (value: unknown) => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const numeric = Number(value);
+        return Number.isFinite(numeric) ? numeric : null;
+      }
+      return null;
+    };
+
+    const latitude = parseCoordinate(item.lat);
+    const longitude = parseCoordinate(item.lng);
+    const hasCoordinates = latitude != null && longitude != null;
 
     const createdIso = (() => {
       if (item.creada_en instanceof Date) {
@@ -86,6 +103,31 @@ export default function OrdersScreen() {
       creada_en: createdIso,
       completada_en: completedIso,
     });
+
+    const handleOpenMap = async () => {
+      if (latitude == null || longitude == null) {
+        return;
+      }
+      const latLng = `${latitude},${longitude}`;
+      const label = encodeURIComponent(description);
+      const primaryUrl =
+        Platform.select({
+          ios: `http://maps.apple.com/?ll=${latLng}&q=${label}`,
+          android: `geo:${latLng}?q=${latLng}(${label})`,
+          default: `https://www.google.com/maps/search/?api=1&query=${latLng}`,
+        }) ?? `https://www.google.com/maps/search/?api=1&query=${latLng}`;
+      const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${latLng}`;
+      try {
+        const canOpen = await Linking.canOpenURL(primaryUrl);
+        if (canOpen) {
+          await Linking.openURL(primaryUrl);
+          return;
+        }
+      } catch {
+        // ignored, we will attempt to open the fallback URL
+      }
+      await Linking.openURL(fallbackUrl);
+    };
 
     return (
       <ThemedView
@@ -143,6 +185,27 @@ export default function OrdersScreen() {
           <ThemedText style={[styles.meta, isCompleted ? styles.textMuted : undefined]}>
             Prioridad: {item.prioridad}
           </ThemedText>
+        ) : null}
+
+        {reference ? (
+          <ThemedText style={[styles.meta, styles.referenceLabel, isCompleted ? styles.textMuted : undefined]}>
+            Referencia: {reference}
+          </ThemedText>
+        ) : null}
+
+        {superFormImage ? (
+          <Image
+            source={{ uri: superFormImage }}
+            style={styles.superFormImage}
+            resizeMode="cover"
+            accessibilityLabel="Imagen asociada del supervisor"
+          />
+        ) : null}
+
+        {hasCoordinates ? (
+          <Pressable onPress={() => { void handleOpenMap(); }} style={styles.mapButton}>
+            <ThemedText style={styles.mapButtonText}>Ver en mapa</ThemedText>
+          </Pressable>
         ) : null}
 
         {!isCompleted ? (
@@ -324,5 +387,29 @@ const styles = StyleSheet.create({
   completeButtonText: {
     color: '#ffffff',
     fontWeight: '600',
+  },
+  mapButton: {
+    marginTop: 8,
+    marginBottom: 8,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#0a7ea4',
+    alignItems: 'center',
+  },
+  mapButtonText: {
+    color: '#0a7ea4',
+    fontWeight: '600',
+  },
+  referenceLabel: {
+    marginTop: 4,
+  },
+  superFormImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 4,
+    backgroundColor: '#d7ecff',
   },
 });
