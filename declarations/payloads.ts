@@ -97,10 +97,10 @@ export interface Record {
 export interface VisitFormData {
     id: number;
     fecha: string;
-    zona_id: number;
+    zona_id: number | null;
     supervisor_id: number;
-    supervisor?: Supervisor;
-    zona?: Zona;
+    supervisor?: Supervisor | null;
+    zona?: Zona | null;
     comentarios: string;
     requiere_corte_cesped: boolean;
     hay_gente_acampando: boolean;

@@ -104,16 +104,15 @@ export default function VisitFormScreen() {
   const handleSubmit = async () => {
     setSendingForm(true);
     try {
-      if (!resolvedZoneId) {
-        throw new Error('No se pudo determinar la zona asociada a la orden.');
-      }
       if (!resolvedSupervisorId) {
         throw new Error('No se pudo determinar el supervisor asociado.');
       }
 
       const formData = new FormData();
       formData.append("fecha", (new Date()).toISOString());
-      formData.append("zona_id", resolvedZoneId);
+      if (resolvedZoneId) {
+        formData.append("zona_id", resolvedZoneId);
+      }
       formData.append("supervisor_id", resolvedSupervisorId);
       formData.append("comentarios", unusual);
       formData.append("requiere_corte_cesped", needsGrassCut ? "true" : "false");
@@ -278,8 +277,14 @@ export default function VisitFormScreen() {
           </View>
         )}
 
-        <Pressable onPress={handleSubmit} style={styles.submitButton} disabled={sendingForm}>
-          <ThemedText style={{ color: 'white', textAlign: 'center', fontWeight: '600' }}>Enviar reporte</ThemedText>
+        <Pressable
+          onPress={handleSubmit}
+          style={[styles.submitButton, sendingForm && styles.submitButtonDisabled]}
+          disabled={sendingForm}
+        >
+          <ThemedText style={{ color: 'white', textAlign: 'center', fontWeight: '600' }}>
+            {sendingForm ? 'Enviando…' : 'Enviar reporte'}
+          </ThemedText>
         </Pressable>
       </ScrollView>
     </ThemedView>
@@ -299,6 +304,7 @@ const styles = StyleSheet.create({
   pillText: { color: '#0a7ea4', fontWeight: '600' },
   photoButton: { backgroundColor: '#4a98c4', padding: 12, borderRadius: 10, marginBottom: 12 },
   submitButton: { backgroundColor: '#0a7ea4', padding: 14, borderRadius: 12, marginTop: 8 },
+  submitButtonDisabled: { opacity: 0.7 },
   cameraContainer: { marginTop: 12, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#ccc' },
   camera: { width: '100%', height: 300 },
   cameraActions: { flexDirection: 'row', justifyContent: 'flex-end', padding: 8, backgroundColor: 'white' }
